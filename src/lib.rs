@@ -14,6 +14,8 @@ pub mod stock;
 pub mod options;
 pub mod orders;
 pub mod position;
+pub mod live_candle;
+pub mod utils;
 
 pub use scrip::*;
 pub use tickers::*;
@@ -21,6 +23,7 @@ pub use stock::*;
 pub use options::*;
 pub use position::*;
 pub use orders::*;
+pub use live_candle::*;
 
 #[cfg(test)]
 mod test_util;

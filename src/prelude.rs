@@ -10,3 +10,5 @@ pub use crate::options::{OptionScrip, OptionChainScrip, OptionChain};
 pub use crate::position::{Transaction, Position};
 #[doc(no_inline)]
 pub use crate::orders::{Order, OrderType, BasketOrder, BasketOrderType};
+#[doc(no_inline)]
+pub use crate::live_candle::Candle;

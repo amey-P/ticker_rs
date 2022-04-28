@@ -1,5 +1,4 @@
-use crate::scrip::{RedisScrip, Scrip};
-use crate::tickers::POOL;
+use crate::{scrip::{RedisScrip, Scrip}, utils::POOL};
 use chrono::prelude::*;
 use std::collections::HashMap;
 

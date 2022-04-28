@@ -1,5 +1,4 @@
 use crate::scrip::RedisScrip;
-use crate::tickers::Ticker;
 
 #[derive(Clone, Debug)]
 pub struct StockScrip {
@@ -22,10 +21,25 @@ impl RedisScrip for StockScrip {
     fn key(&self) -> String {
         format!("{}:{}", self.name, self.exchange)
     }
+}
 
-    fn updated_ticker(&self) -> Ticker {
-        let mut ticker = Ticker::new();
-        ticker.reload(&self.get_command());
-        ticker
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn candle_timestamps() {
+        let sbin: StockScrip = StockScrip::new("SBIN", "N", "C");
+        assert!(sbin.candle_ts().len() > 0);
+    }
+
+    #[test]
+    fn latest_candle() {
+        let sbin: StockScrip = StockScrip::new("SBIN", "N", "C");
+        let candle = sbin.latest_candle().unwrap();
+        assert!(candle.open != 0.0);
+        assert!(candle.high != 0.0);
+        assert!(candle.low != 0.0);
+        assert!(candle.close != 0.0);
     }
 }

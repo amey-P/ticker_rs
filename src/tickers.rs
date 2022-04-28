@@ -1,15 +1,4 @@
 use crate::scrip::{RedisScrip, Scrip};
-use r2d2;
-use redis;
-
-lazy_static::lazy_static! {
-    static ref URL: &'static str = "redis://redis";
-    static ref PORT: u16 = 6379;
-    pub static ref POOL: r2d2::Pool<redis::Client> = r2d2::Pool::builder()
-        .build(redis::Client::open(format!("{}:{}", *URL, *PORT))
-               .unwrap())
-        .unwrap();
-}
 
 #[derive(Default, Debug, Clone)]
 pub struct OHLC {
@@ -56,7 +45,7 @@ impl Ticker {
 
     #[cfg(not(test))]
     pub fn reload(&mut self, command: &redis::Cmd) -> &mut Self {
-        let mut connection = POOL.clone().get().unwrap();
+        let mut connection = crate::utils::POOL.clone().get().unwrap();
         let new_values: Ticker = command.query(&mut *connection).unwrap();
         self.update_from_ticker(new_values);
         self
@@ -78,13 +67,13 @@ impl Ticker {
             match bid_or_ask {
                 &"bid" => target = &mut self.depth.bid,
                 &"ask" => target = &mut self.depth.ask,
-                _ => panic!("Un-mapped key -> {}", key),
+                _ => return,
             }
             match target.get_mut(idx) {
                 Some(order) => match rate_or_qty {
                     &"rate" => order.price = redis::from_redis_value(value).unwrap(),
                     &"quantity" => order.quantity = redis::from_redis_value(value).unwrap(),
-                    _ => panic!("Un-mapped key -> {}", key),
+                    _ => (),
                 },
                 None => {
                     target.resize(idx + 1, Default::default());
@@ -95,7 +84,7 @@ impl Ticker {
                         &"quantity" => {
                             target[idx].quantity = redis::from_redis_value(value).unwrap()
                         }
-                        _ => panic!("Un-mapped key -> {}", key),
+                        _ => (),
                     }
                 }
             }
