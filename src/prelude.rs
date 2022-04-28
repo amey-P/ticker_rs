@@ -1,5 +1,5 @@
 #[doc(no_inline)]
-pub use crate::scrip::{Scrip, RedisScrip};
+pub use crate::scrip::{RawScrip, Scrip, RedisScrip};
 #[doc(no_inline)]
 pub use crate::tickers::{Ticker, CompleteTicker};
 #[doc(no_inline)]

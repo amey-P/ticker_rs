@@ -67,13 +67,13 @@ impl Ticker {
             match bid_or_ask {
                 &"bid" => target = &mut self.depth.bid,
                 &"ask" => target = &mut self.depth.ask,
-                _ => return,
+                _ => panic!("Un-mapped key -> {}", key),
             }
             match target.get_mut(idx) {
                 Some(order) => match rate_or_qty {
                     &"rate" => order.price = redis::from_redis_value(value).unwrap(),
                     &"quantity" => order.quantity = redis::from_redis_value(value).unwrap(),
-                    _ => (),
+                    _ => panic!("Un-mapped key -> {}", key),
                 },
                 None => {
                     target.resize(idx + 1, Default::default());
@@ -84,13 +84,14 @@ impl Ticker {
                         &"quantity" => {
                             target[idx].quantity = redis::from_redis_value(value).unwrap()
                         }
-                        _ => (),
+                        _ => panic!("Un-mapped key -> {}", key),
                     }
                 }
             }
         }
     }
 
+    // Expects a strict template of fields.
     pub fn update(&mut self, key: String, value: &redis::Value) {
         match key.as_str() {
             "ltp" => self.ltp = redis::from_redis_value(value).unwrap(),

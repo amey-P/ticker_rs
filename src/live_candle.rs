@@ -6,6 +6,7 @@ use crate::scrip::RedisScrip;
 
 lazy_static::lazy_static! {
     pub static ref DATETIME_FMT: String = String::from("%Y/%m/%d-%H.%M");
+    pub static ref EXPIRE_SEC: usize = 7*24*60*60;
 }
 
 #[derive(Clone, Debug)]
@@ -30,25 +31,33 @@ impl Candle {
         let mut connection = POOL.clone().get().unwrap();
 
         let ts_string = timestamp.format(DATETIME_FMT.as_str());
-        let query_key = format!("{}:{}", scrip.key(), ts_string);
+        let query_key = format!("{}:CANDLES:{}", scrip.key(), ts_string);
         
-        if let Some(mut candle) = redis::Cmd::hgetall(query_key).query::<Candle>(&mut *connection).ok() {
+        if redis::Cmd::exists(query_key.clone()).query(&mut *connection).unwrap() {
+            let mut candle: Candle = redis::Cmd::hgetall(query_key)
+                                        .query(&mut *connection)
+                                        .unwrap();
             candle.timestamp = timestamp;
             return Some(candle);
-    }
+        }
         else {
             return None;
         }
     }
 
-    fn push(&self, key: String) {
-        let connection = POOL.clone().get().unwrap();
+    pub fn push_redis(&self, scrip: &(impl RedisScrip + ?Sized)) {
+        let mut connection = POOL.clone().get().unwrap();
 
-        let timestamp = self.timestamp.format("%Y/%m/%d-%H.%m");
-        let query_key = format!("{}:{}", key, timestamp);
-        let cmd = redis::Cmd::new();
+        let timestamp = self.timestamp.format(&DATETIME_FMT);
+        let query_key = format!("{}:CANDLES:{}", scrip.key(), timestamp);
 
-        todo!();
+        redis::Cmd::hset_multiple(query_key.clone(),
+                                  &[("open", self.open),
+                                    ("high", self.high),
+                                    ("low", self.low),
+                                    ("close", self.close)]).execute(&mut *connection);
+
+        redis::Cmd::expire(query_key, *EXPIRE_SEC).execute(&mut *connection);
     }
 
     fn update(&mut self, key: String, value: &redis::Value) {
@@ -83,5 +92,29 @@ impl redis::FromRedisValue for Candle {
             .unwrap_or_else(|_| panic!("Empty values found on Redis server"))
             .for_each(|(k, v)| candle.update(redis::from_redis_value(k).unwrap(), v));
         Ok(candle)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::RawScrip;
+    use super::*;
+
+    #[test]
+    fn upload_and_fetch_candle() {
+        let mut candle: Candle = Default::default();
+        candle.timestamp = Local::now();
+
+        let test_scrip = RawScrip { key: "TEST".to_string() };
+        candle.push_redis(&test_scrip);
+        let uploaded_candle = Candle::from_timestamp(&test_scrip, candle.timestamp).unwrap();
+        let original_minute = format!("{:?}", uploaded_candle.timestamp.format("%Y/%m/%d-%H:%M"));
+        let uploaded_minute = format!("{:?}", candle.timestamp.format("%Y/%m/%d-%H:%M"));
+        assert_eq!(original_minute, uploaded_minute);
+
+        // Cleanup
+        let mut connection = POOL.clone().get().unwrap();
+        let del_key = format!("TEST:CANDLES:{}", candle.timestamp.format(&DATETIME_FMT));
+        redis::Cmd::del(del_key).execute(&mut *connection);
     }
 }

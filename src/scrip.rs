@@ -25,7 +25,7 @@ pub trait RedisScrip {
 
     fn candle_ts(&self) -> Vec<DateTime<Local>> {
         let mut connection = POOL.clone().get().unwrap();
-        let all_candles_wildcard = format!("{}:*", self.key());
+        let all_candles_wildcard = format!("{}:CANDLES:*", self.key());
         let cmd = redis::Cmd::keys(all_candles_wildcard);
         let all_keys: Vec<String> = cmd.query(&mut *connection).unwrap();
 
@@ -47,6 +47,17 @@ pub trait RedisScrip {
             Some(ts) => Candle::from_timestamp(self, ts.clone()),
             None => None,
         }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct RawScrip {
+    pub key: String,
+}
+
+impl RedisScrip for RawScrip {
+    fn key(&self) -> String {
+        self.key.clone()
     }
 }
 
