@@ -15,6 +15,7 @@ pub struct Candle {
     pub high: f64,
     pub low: f64,
     pub close: f64,
+    pub volume: u64,
     pub timestamp: DateTime<Local>,
     pub period: Duration,
 }
@@ -66,7 +67,8 @@ impl Candle {
             "high" => self.high = redis::from_redis_value(value).unwrap(),
             "low" => self.low = redis::from_redis_value(value).unwrap(),
             "close" => self.close = redis::from_redis_value(value).unwrap(),
-            _ => (),
+            "volume" => self.volume = redis::from_redis_value(value).unwrap(),
+            k => panic!("Unrecognized key '{}' found in OHLC database!", k),
         }
     }
 }
@@ -78,6 +80,7 @@ impl Default for Candle {
             high: 0.0,
             low: 0.0,
             close: 0.0,
+            volume: 0,
             timestamp: Local::now(),
             period: Duration::minutes(1),
         }
