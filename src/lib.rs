@@ -5,6 +5,7 @@ extern crate chrono;
 extern crate r2d2;
 extern crate redis;
 extern crate thiserror;
+extern crate serde;
 
 pub mod prelude;
 pub mod error;

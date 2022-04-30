@@ -1,6 +1,7 @@
+use serde::{Serialize, Deserialize};
 use crate::scrip::{RedisScrip, Scrip};
 
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct OHLC {
     pub open: f64,
     pub high: f64,
@@ -8,13 +9,13 @@ pub struct OHLC {
     pub close: f64,
 }
 
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct DepthOrder {
     pub price: f64,
     pub quantity: u32,
 }
 
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct Depth {
     pub depth: u8,
     pub total_bid: u32,
@@ -23,7 +24,7 @@ pub struct Depth {
     pub ask: Vec<DepthOrder>,
 }
 
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct Ticker {
     pub ltp: f64,
     pub ohlc: OHLC,
