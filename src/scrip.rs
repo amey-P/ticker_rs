@@ -2,7 +2,7 @@ use crate::{options::OptionScrip, utils::POOL};
 use crate::stock::StockScrip;
 use crate::tickers::Ticker;
 use crate::live_candle::{Candle, DATETIME_FMT};
-use chrono::{Local, DateTime, NaiveDateTime, TimeZone};
+use chrono::{Utc, DateTime, NaiveDateTime, TimeZone};
 use redis;
 use std::hash::{Hash, Hasher};
 
@@ -23,18 +23,18 @@ pub trait RedisScrip {
         ticker
     }
 
-    fn candle_ts(&self) -> Vec<DateTime<Local>> {
+    fn candle_ts(&self) -> Vec<DateTime<Utc>> {
         let mut connection = POOL.clone().get().unwrap();
         let all_candles_wildcard = format!("{}:CANDLES:*", self.key());
         let cmd = redis::Cmd::keys(all_candles_wildcard);
         let all_keys: Vec<String> = cmd.query(&mut *connection).unwrap();
 
-        let mut timestamps: Vec<DateTime<Local>> = all_keys
+        let mut timestamps: Vec<DateTime<Utc>> = all_keys
             .into_iter()
             .map(|x| x.split(":").last().unwrap().to_string())
             .map(|x| {
                 let dt = NaiveDateTime::parse_from_str(x.as_str(), &DATETIME_FMT).unwrap();
-                Local.from_local_datetime(&dt).unwrap()
+                Utc::from_utc_datetime(&Utc, &dt)
             })
             .collect();
         timestamps.sort();

@@ -9,6 +9,7 @@ lazy_static! {
             high: 420.69,
             low: 390.44,
             close: 400.23,
+            volume: 1234234,
         },
         depth: Depth {
             depth: 5,

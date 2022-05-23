@@ -1,4 +1,4 @@
-use chrono::{DateTime, Duration, Local};
+use chrono::{DateTime, Duration, Utc};
 use redis;
 
 use crate::utils::POOL;
@@ -16,7 +16,7 @@ pub struct Candle {
     pub low: f64,
     pub close: f64,
     pub volume: u64,
-    pub timestamp: DateTime<Local>,
+    pub timestamp: DateTime<Utc>,
     pub period: Duration,
 }
 
@@ -28,7 +28,7 @@ impl Candle {
         candle
     }
 
-    pub fn from_timestamp(scrip: &(impl RedisScrip + ?Sized), timestamp: DateTime<Local>) -> Option<Self> {
+    pub fn from_timestamp(scrip: &(impl RedisScrip + ?Sized), timestamp: DateTime<Utc>) -> Option<Self> {
         let mut connection = POOL.clone().get().unwrap();
 
         let ts_string = timestamp.format(DATETIME_FMT.as_str());
@@ -56,7 +56,8 @@ impl Candle {
                                   &[("open", self.open),
                                     ("high", self.high),
                                     ("low", self.low),
-                                    ("close", self.close)]).execute(&mut *connection);
+                                    ("close", self.close),
+                                    ("volume", self.volume as f64)]).execute(&mut *connection);
 
         redis::Cmd::expire(query_key, *EXPIRE_SEC).execute(&mut *connection);
     }
@@ -67,7 +68,10 @@ impl Candle {
             "high" => self.high = redis::from_redis_value(value).unwrap(),
             "low" => self.low = redis::from_redis_value(value).unwrap(),
             "close" => self.close = redis::from_redis_value(value).unwrap(),
-            "volume" => self.volume = redis::from_redis_value(value).unwrap(),
+            "volume" => self.volume = {
+                let value: f64 = redis::from_redis_value(value).unwrap();
+                value as u64
+            },
             k => panic!("Unrecognized key '{}' found in OHLC database!", k),
         }
     }
@@ -81,7 +85,7 @@ impl Default for Candle {
             low: 0.0,
             close: 0.0,
             volume: 0,
-            timestamp: Local::now(),
+            timestamp: Utc::now(),
             period: Duration::minutes(1),
         }
     }
@@ -106,7 +110,7 @@ mod test {
     #[test]
     fn upload_and_fetch_candle() {
         let mut candle: Candle = Default::default();
-        candle.timestamp = Local::now();
+        candle.timestamp = Utc::now();
 
         let test_scrip = RawScrip { key: "TEST".to_string() };
         candle.push_redis(&test_scrip);

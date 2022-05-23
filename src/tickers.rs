@@ -7,6 +7,7 @@ pub struct OHLC {
     pub high: f64,
     pub low: f64,
     pub close: f64,
+    pub volume: u64,
 }
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
@@ -61,7 +62,10 @@ impl Ticker {
     fn update_depth(&mut self, key: String, value: &redis::Value) {
         // For Depth -> Bid/Ask List
         let parts: Vec<&str> = key.split(":").collect();
-        assert_eq!(parts.len(), 3);
+        if parts.len() != 3 {
+            panic!("Un-mapped key -> {}", key);
+        }
+
         if let [bid_or_ask, rate_or_qty, val] = &parts[..3] {
             let idx = val.parse::<usize>().unwrap();
             let target: &mut Vec<DepthOrder>;
@@ -103,6 +107,7 @@ impl Ticker {
             "depth" => self.depth.depth = redis::from_redis_value(value).unwrap(),
             "total_bid" => self.depth.total_bid = redis::from_redis_value(value).unwrap(),
             "total_ask" => self.depth.total_ask = redis::from_redis_value(value).unwrap(),
+            "total_volume" => self.ohlc.volume = redis::from_redis_value(value).unwrap(),
             depth_key => self.update_depth(depth_key.to_string(), value),
         }
     }
