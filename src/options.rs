@@ -1,6 +1,11 @@
-use crate::{scrip::{RedisScrip, Scrip}, utils::POOL};
+use crate::{redis_utils::RedisScrip, scrip::Scrip, utils::POOL};
+use crate::scrip::{Exchange, ExchangeType};
 use chrono::prelude::*;
 use std::collections::HashMap;
+
+lazy_static::lazy_static! {
+    pub static ref EXPIRY_FORMAT: String = String::from("%d/%m/%Y");
+}
 
 #[derive(Debug, Clone)]
 pub enum OptionType {
@@ -21,8 +26,8 @@ impl std::fmt::Display for OptionType {
 #[derive(Clone, Debug)]
 pub struct OptionScrip {
     pub name: String,
-    pub exchange: String,
-    pub exchange_type: String,
+    pub exchange: Exchange,
+    pub exchange_type: ExchangeType,
     pub strike: u32,
     pub option_type: OptionType,
     pub expiry: NaiveDate,
@@ -31,10 +36,11 @@ pub struct OptionScrip {
 
 impl RedisScrip for OptionScrip {
     fn key(&self) -> String {
-        let expiry = self.expiry.format("%d/%m/%Y");
+        let expiry = self.expiry.format(&*EXPIRY_FORMAT);
         format!(
-            "{}:{}:{}:{}:{}",
-            self.name, self.exchange, expiry, self.strike, self.option_type
+            "{}:{}:{}:{}:{}:{}",
+            self.name, self.exchange.to_string(), self.exchange_type.to_string(),
+            expiry, self.strike, self.option_type
         )
     }
 }
@@ -52,8 +58,8 @@ impl OptionScrip {
         let boxed_underlying = underlying.map(Box::new);
         Self {
             name: name.to_string(),
-            exchange: exchange.to_string(),
-            exchange_type: exchange_type.to_string(),
+            exchange: exchange.into(),
+            exchange_type: exchange_type.into(),
             expiry,
             strike,
             option_type,
@@ -68,8 +74,8 @@ impl OptionScrip {
 #[derive(Clone, Debug)]
 pub struct OptionChainScrip {
     pub name: String,
-    pub exchange: String,
-    pub exchange_type: String,
+    pub exchange: Exchange,
+    pub exchange_type: ExchangeType,
     pub expiry: NaiveDate,
     pub underlying: Option<Scrip>,
 }
@@ -78,15 +84,15 @@ impl OptionChainScrip {
     pub fn new(name: &str, exchange: &str, exchange_type: &str, expiry: NaiveDate, underlying: Option<Scrip>) -> Self {
         Self {
             name: name.to_string(),
-            exchange: exchange.to_string(),
-            exchange_type: exchange_type.to_string(),
+            exchange: exchange.into(),
+            exchange_type: exchange_type.into(),
             expiry,
             underlying,
         }
     }
 
     fn key(&self) -> String {
-        format!("{}:{}*", self.name, self.exchange)
+        format!("{}:{}:{}*", self.name, self.exchange.to_string(), self.exchange_type.to_string())
     }
 
     fn sub_keys(&self) -> Vec<String> {
@@ -175,13 +181,15 @@ impl OptionChain {
             match self.calls.get_mut(&strike) {
                 Some(_) => (),
                 None => {
-                    let opt_scrip = OptionScrip::new(self.scrip.name.as_str(),
-                                                     self.scrip.exchange.as_str(),
-                                                     self.scrip.exchange_type.as_str(),
-                                                     self.scrip.expiry,
-                                                     strike,
-                                                     OptionType::CE,
-                                                     self.scrip.underlying.clone());
+                    let opt_scrip = OptionScrip {
+                        name: self.scrip.name.clone(),
+                        exchange: self.scrip.exchange,
+                        exchange_type: self.scrip.exchange_type,
+                        expiry : self.scrip.expiry,
+                        strike,
+                        option_type: OptionType::PE,
+                        underlying: self.scrip.underlying.clone().map(Box::new),
+                    };
                     
                     self.calls.insert(
                         strike,
@@ -192,13 +200,15 @@ impl OptionChain {
             match self.puts.get_mut(&strike) {
                 Some(_) => (),
                 None => {
-                    let opt_scrip = OptionScrip::new(self.scrip.name.as_str(),
-                                                     self.scrip.exchange.as_str(),
-                                                     self.scrip.exchange_type.as_str(),
-                                                     self.scrip.expiry,
-                                                     strike,
-                                                     OptionType::PE,
-                                                     self.scrip.underlying.clone());
+                    let opt_scrip = OptionScrip {
+                        name: self.scrip.name.clone(),
+                        exchange: self.scrip.exchange,
+                        exchange_type: self.scrip.exchange_type,
+                        expiry : self.scrip.expiry,
+                        strike,
+                        option_type: OptionType::PE,
+                        underlying: self.scrip.underlying.clone().map(Box::new),
+                    };
                     
                     self.puts.insert(
                         strike,

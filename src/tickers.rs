@@ -1,5 +1,6 @@
 use serde::{Serialize, Deserialize};
-use crate::scrip::{RedisScrip, Scrip};
+use crate::scrip::Scrip;
+use crate::redis_utils::RedisScrip;
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct OHLC {
@@ -61,32 +62,31 @@ impl Ticker {
 
     fn update_depth(&mut self, key: String, value: &redis::Value) {
         // For Depth -> Bid/Ask List
-        let parts: Vec<&str> = key.split(":").collect();
+        let parts: Vec<&str> = key.split(':').collect();
         if parts.len() != 3 {
             panic!("Un-mapped key -> {}", key);
         }
 
         if let [bid_or_ask, rate_or_qty, val] = &parts[..3] {
             let idx = val.parse::<usize>().unwrap();
-            let target: &mut Vec<DepthOrder>;
-            match bid_or_ask {
-                &"bid" => target = &mut self.depth.bid,
-                &"ask" => target = &mut self.depth.ask,
+            let target: &mut Vec<DepthOrder> = match *bid_or_ask {
+                "bid" => &mut self.depth.bid,
+                "ask" => &mut self.depth.ask,
                 _ => panic!("Un-mapped key -> {}", key),
-            }
+            };
             match target.get_mut(idx) {
-                Some(order) => match rate_or_qty {
-                    &"rate" => order.price = redis::from_redis_value(value).unwrap(),
-                    &"quantity" => order.quantity = redis::from_redis_value(value).unwrap(),
+                Some(order) => match *rate_or_qty {
+                    "rate" => order.price = redis::from_redis_value(value).unwrap(),
+                    "quantity" => order.quantity = redis::from_redis_value(value).unwrap(),
                     _ => panic!("Un-mapped key -> {}", key),
                 },
                 None => {
                     target.resize(idx + 1, Default::default());
-                    match rate_or_qty {
-                        &"rate" => {
+                    match *rate_or_qty {
+                        "rate" => {
                             target[idx].price = redis::from_redis_value(value).unwrap()
                         }
-                        &"quantity" => {
+                        "quantity" => {
                             target[idx].quantity = redis::from_redis_value(value).unwrap()
                         }
                         _ => panic!("Un-mapped key -> {}", key),

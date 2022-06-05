@@ -1,5 +1,6 @@
 use crate::position::{Position, Transaction};
-use crate::scrip::{RedisScrip, Scrip};
+use crate::scrip::Scrip;
+use crate::redis_utils::RedisScrip;
 use crate::tickers::Ticker;
 use crate::error::Error;
 use chrono::prelude::*;
@@ -171,7 +172,7 @@ mod tests {
     
     #[test]
     fn limited_marketorder_buy() {
-        let scrip = StockScrip::new("-", "-", "-");
+        let scrip = StockScrip::new("TEST", "NSE", "C");
         let buy_5 = Order {
             scrip: scrip::Scrip::Stock(scrip.clone()),
             quantity: 8,
@@ -182,7 +183,7 @@ mod tests {
 
     #[test]
     fn limited_marketorder_sell() {
-        let scrip = StockScrip::new("-", "-", "-");
+        let scrip = StockScrip::new("TEST", "NSE", "C");
         let sell_5 = Order {
             scrip: scrip::Scrip::Stock(scrip.clone()),
             quantity: -8,
@@ -193,7 +194,7 @@ mod tests {
 
     #[test]
     fn unlimited_marketorder_buy() {
-        let scrip = StockScrip::new("-", "-", "-");
+        let scrip = StockScrip::new("TEST", "NSE", "C");
         let buy_all = Order {
             scrip: scrip::Scrip::Stock(scrip.clone()),
             quantity: 20,
@@ -204,7 +205,7 @@ mod tests {
 
     #[test]
     fn unlimited_marketorder_sell() {
-        let scrip = StockScrip::new("-", "-", "-");
+        let scrip = StockScrip::new("TEST", "NSE", "C");
         let sell_all = Order {
             scrip: scrip::Scrip::Stock(scrip.clone()),
             quantity: -20,
